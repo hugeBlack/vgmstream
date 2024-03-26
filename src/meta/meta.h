@@ -6,7 +6,7 @@
 #include "../util/reader_text.h"
 #include "../util/sf_utils.h"
 
-typedef VGMSTREAM* (*init_vgmstream_t)(STREAMFILE* sf);
+
 
 VGMSTREAM* init_vgmstream_silence(int channels, int sample_rate, int32_t num_samples);
 VGMSTREAM* init_vgmstream_silence_container(int total_subsongs);

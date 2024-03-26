@@ -565,39 +565,33 @@ init_vgmstream_t init_vgmstream_functions[] = {
 };
 
 #define LOCAL_ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
-static const int init_vgmstream_count = LOCAL_ARRAY_LENGTH(init_vgmstream_functions);
+const int init_vgmstream_count = LOCAL_ARRAY_LENGTH(init_vgmstream_functions);
 
 /*****************************************************************************/
 /* INIT/META                                                                 */
 /*****************************************************************************/
 
-/* internal version with all parameters */
-static VGMSTREAM* init_vgmstream_internal(STREAMFILE* sf) {
-    if (!sf)
-        return NULL;
-
-    /* try a series of formats, see which works */
-    for (int i = 0; i < init_vgmstream_count; i++) {
-        init_vgmstream_t init_vgmstream_function = init_vgmstream_functions[i];
-    
+VGMSTREAM* init_vgmstream_with_function(STREAMFILE* sf, init_vgmstream_t init_vgmstream_function){
+    {
+        // init_vgmstream_t init_vgmstream_function = init_vgmstream_functions[i];
 
         /* call init function and see if valid VGMSTREAM was returned */
         VGMSTREAM* vgmstream = init_vgmstream_function(sf);
         if (!vgmstream)
-            continue;
+            return NULL;
 
         /* fail if there is nothing/too much to play (<=0 generates empty files, >N writes GBs of garbage) */
         if (vgmstream->num_samples <= 0 || vgmstream->num_samples > VGMSTREAM_MAX_NUM_SAMPLES) {
             VGM_LOG("VGMSTREAM: wrong num_samples %i\n", vgmstream->num_samples);
             close_vgmstream(vgmstream);
-            continue;
+            return NULL;
         }
 
         /* everything should have a reasonable sample rate */
         if (vgmstream->sample_rate < VGMSTREAM_MIN_SAMPLE_RATE || vgmstream->sample_rate > VGMSTREAM_MAX_SAMPLE_RATE) {
             VGM_LOG("VGMSTREAM: wrong sample_rate %i\n", vgmstream->sample_rate);
             close_vgmstream(vgmstream);
-            continue;
+            return NULL;
         }
 
         /* sanify loops and remove bad metadata */
@@ -653,7 +647,7 @@ static VGMSTREAM* init_vgmstream_internal(STREAMFILE* sf) {
         if (vgmstream->num_streams < 0 || vgmstream->num_streams > VGMSTREAM_MAX_SUBSONGS) {
             VGM_LOG("VGMSTREAM: wrong num_streams (ns=%i)\n", vgmstream->num_streams);
             close_vgmstream(vgmstream);
-            continue;
+            return NULL;
         }
 
         /* save info */
@@ -666,6 +660,24 @@ static VGMSTREAM* init_vgmstream_internal(STREAMFILE* sf) {
         setup_vgmstream(vgmstream); /* final setup */
 
         return vgmstream;
+    }
+}
+
+/* internal version with all parameters, will set found_function */
+VGMSTREAM* init_vgmstream_and_get_function(STREAMFILE* sf, init_vgmstream_t* found_function) {
+    if (!sf)
+        return NULL;
+
+    /* try a series of formats, see which works */
+    for (int i = 0; i < init_vgmstream_count; i++) {
+        init_vgmstream_t init_vgmstream_function = init_vgmstream_functions[i];
+    
+        VGMSTREAM* vgmstream = init_vgmstream_with_function(sf, init_vgmstream_function);
+        if(vgmstream){
+            if(found_function)
+                *found_function = init_vgmstream_function;
+            return vgmstream;
+        }
     }
 
     /* not supported */
@@ -717,7 +729,8 @@ VGMSTREAM* init_vgmstream(const char* const filename) {
 }
 
 VGMSTREAM* init_vgmstream_from_STREAMFILE(STREAMFILE* sf) {
-    return init_vgmstream_internal(sf);
+    init_vgmstream_t vgm_f;
+    return init_vgmstream_and_get_function(sf, &vgm_f);
 }
 
 /* Reset a VGMSTREAM to its state at the start of playback (when a plugin seeks back to zero). */

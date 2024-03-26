@@ -253,6 +253,7 @@ typedef struct {
 
 } VGMSTREAM;
 
+typedef VGMSTREAM* (*init_vgmstream_t)(STREAMFILE* sf);
 
 /* for files made of "continuous" segments, one per section of a song (using a complete sub-VGMSTREAM) */
 typedef struct {
@@ -337,6 +338,8 @@ VGMSTREAM* init_vgmstream(const char* const filename);
 
 /* init with custom IO via streamfile */
 VGMSTREAM* init_vgmstream_from_STREAMFILE(STREAMFILE* sf);
+VGMSTREAM* init_vgmstream_with_function(STREAMFILE* sf, init_vgmstream_t init_vgmstream_function);
+VGMSTREAM* init_vgmstream_and_get_function(STREAMFILE* sf, init_vgmstream_t* found_function);
 
 /* reset a VGMSTREAM to start of stream */
 void reset_vgmstream(VGMSTREAM* vgmstream);
